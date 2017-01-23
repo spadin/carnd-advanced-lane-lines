@@ -103,12 +103,12 @@ def pipeline(img):
     grady = abs_sobel_thresh(img, orient='y', sobel_kernel=ksize, thresh=(75, 150))
     mag_binary = mag_thresh(img, sobel_kernel=ksize, mag_thresh=(80, 200))
     dir_binary = dir_thresh(img, sobel_kernel=ksize, thresh=(0.7, 1.3))
-    yellows = saturation_thresh(img, thresh=(180, 255))
-    whites = red_thresh(img, thresh=(215, 255))
+    saturation = saturation_thresh(img, thresh=(180, 255))
+    reds = red_thresh(img, thresh=(215, 255))
 
     combined = np.zeros_like(dir_binary)
     combined[
-        ((whites == 1) & (yellows == 1)) |
+        ((reds == 1) & (saturation == 1)) |
         ((gradx == 1) & (grady == 1)) |
         ((mag_binary == 1) & (dir_binary == 1))] = 1
 
