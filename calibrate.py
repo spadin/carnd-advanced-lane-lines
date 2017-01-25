@@ -4,50 +4,60 @@ import glob
 import numpy as np
 import pickle
 
-# List of images to be used for calibration
-images_glob = glob.glob("images/calibration/calibration*.jpg")
 
-# Shape of the calibration images
-image_shape = rgb_image(images_glob[0]).shape[1::-1]
+def calibrate():
+    # List of images to be used for calibration
+    images_glob = glob.glob("images/calibration/calibration*.jpg")
 
-# Number of columns and rows for the chessboard
-chessboard_shape = (9, 6)
+    # Shape of the calibration images
+    image_shape = rgb_image(images_glob[0]).shape[1::-1]
 
-# Where to save the calibration data
-output_file = "./calibration.pkl"
+    # Number of columns and rows for the chessboard
+    chessboard_shape = (9, 6)
 
-objpoints = []
-imgpoints = []
+    # Where to save the calibration data
+    output_file = "./calibration.pkl"
 
-for filepath in images_glob:
-    # Load image
-    img = rgb_image(filepath)
+    objpoints = []
+    imgpoints = []
 
-    # Convert image to grayscale
-    gray = rgb_to_gray(img)
+    for filepath in images_glob:
+        # Load image
+        img = rgb_image(filepath)
 
-    # Find chessboard corners for image
-    pattern_was_found, corners = cv2.findChessboardCorners(gray, chessboard_shape, None)
+        # Convert image to grayscale
+        gray = rgb_to_gray(img)
 
-    # Create an object points array
-    cols, rows = chessboard_shape
-    objp = np.zeros((cols * rows, 3), np.float32)
-    objp[:,:2] = np.mgrid[0:cols, 0:rows].T.reshape(-1, 2)
+        # Find chessboard corners for image
+        pattern_was_found, corners = cv2.findChessboardCorners(gray, chessboard_shape, None)
 
-    if pattern_was_found:
-        objpoints.append(objp)
-        imgpoints.append(corners)
+        # Create an object points array
+        cols, rows = chessboard_shape
+        objp = np.zeros((cols * rows, 3), np.float32)
+        objp[:,:2] = np.mgrid[0:cols, 0:rows].T.reshape(-1, 2)
 
+        if pattern_was_found:
+            objpoints.append(objp)
+            imgpoints.append(corners)
 
-# Use the object points and image points to calibrate a camera
-ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, image_shape, None, None)
+    # Use the object points and image points to calibrate a camera
+    _, mtx, dist, _, _ = cv2.calibrateCamera(objpoints, imgpoints, image_shape, None, None)
 
-# Save the calibration data for use later
-with open(output_file, "wb") as f:
-    data = {}
-    data["ret"] = ret
-    data["mtx"] = mtx
-    data["dist"] = dist
-    data["rvecs"] = rvecs
-    data["tvecs"] = tvecs
-    pickle.dump(data, f)
+    # Save the calibration data for use later
+    save_calibration_data(output_file, mtx, dist)
+
+def load_calibration_data(filepath):
+    with open(filepath, "rb") as f:
+        data = pickle.load(f)
+        mtx, dist = data["mtx"], data["dist"]
+        return mtx, dist
+
+def save_calibration_data(filepath, mtx, dist):
+    with open(filepath, "wb") as f:
+        data = {}
+        data["mtx"] = mtx
+        data["dist"] = dist
+        pickle.dump(data, f)
+
+if __name__ == "__main__":
+    calibrate()

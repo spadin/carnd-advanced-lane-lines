@@ -1,6 +1,10 @@
-from image_helper import rgb_to_gray, rgb_to_hls
+from distortion import Distortion
+from image_helper import rgb_to_gray, rgb_to_hls, rgb_image
+from transform import TopDownTransform
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
+import thresholding
 
 def abs_sobel_thresh(img, orient='x', sobel_kernel=3, thresh=(0, 255)):
     thresh_min, thresh_max = thresh
@@ -99,17 +103,27 @@ def pipeline(img):
     ksize = 17 # Choose a larger odd number to smooth gradient measurements
 
     # Apply each of the thresholding functions
-    gradx = abs_sobel_thresh(img, orient='x', sobel_kernel=ksize, thresh=(30, 100))
-    grady = abs_sobel_thresh(img, orient='y', sobel_kernel=ksize, thresh=(75, 150))
-    mag_binary = mag_thresh(img, sobel_kernel=ksize, mag_thresh=(80, 200))
-    dir_binary = dir_thresh(img, sobel_kernel=ksize, thresh=(0.7, 1.3))
-    saturation = saturation_thresh(img, thresh=(180, 255))
-    reds = red_thresh(img, thresh=(215, 255))
+    gradx = abs_sobel_thresh(img, orient='x', sobel_kernel=ksize, thresh=(15, 100))
+    saturation = saturation_thresh(img, thresh=(120, 255))
+    reds = red_thresh(img, thresh=(180, 255))
 
-    combined = np.zeros_like(dir_binary)
-    combined[
-        ((reds == 1) & (saturation == 1)) |
-        ((gradx == 1) & (grady == 1)) |
-        ((mag_binary == 1) & (dir_binary == 1))] = 1
+    combined = np.zeros_like(saturation)
+    combined[((reds == 1) | (saturation == 1)) | (gradx == 1)] = 1
 
     return combined
+
+if __name__ == "__main__":
+    transform = TopDownTransform()
+    distortion = Distortion(calibration_data_filepath="./calibration.pkl")
+
+    filepath = "images/test/straight_lines1.jpg"
+    image = rgb_image(filepath)
+    image = distortion.undistort(image)
+    topdown = transform.transform_to_top_down(image)
+    image = thresholding.pipeline(topdown)
+
+    image_color = (np.dstack((image, image, image))*[0, 255, 0]).astype(np.uint8)
+    print(image_color.dtype, topdown.dtype)
+    new_image = cv2.addWeighted(topdown, 1, image_color, 1, 0)
+    plt.imshow(image_color)
+    plt.show()
